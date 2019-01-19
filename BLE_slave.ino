@@ -17,14 +17,15 @@
 AltSoftSerial BTserial; 
 // https://www.pjrc.com/teensy/td_libs_AltSoftSerial.html
 
+// Set global variables
 char c=' ';
 boolean NL = true;
-int state = 0;
+byte carMode = 0;
  
 void setup() 
 {
     pinMode(7, INPUT);
-    Serial.begin(9600);
+    Serial.begin(9600);// opens serial port, sets data rate to 9600 bps
     Serial.print("Sketch:   ");   Serial.println(__FILE__);
     Serial.print("Uploaded: ");   Serial.println(__DATE__);
     Serial.println(" ");
@@ -45,20 +46,17 @@ void setup()
  
 void loop()
 {
-    // Read from the Bluetooth module and send to the Arduino Serial Monitor
+    //readFromModuleAndDisplayInMonitor();
+    readFromMonitorAndSendToModule();
+     // read data only when you receive data
     if (BTserial.available())
     {
-        c = BTserial.read();
-        // 49 is the ascii code for "1"
-        // 48 is the ascii code for "0"
-        //if (c==49)   {  Serial.println("on now");  }
-        //if (c==48)   {  Serial.println("off now");  }
-        //Serial.println(c);
-        Serial.write(c); //println cannot be used, as c only contains 1 character at a time
+        // read the incoming byte
+        if (BTserial.read() == integer){
+          if (BTserial.read()
+          carMode = BTserial.read();
+        }
     }
- 
-    readFromMonitorAndSendToModule();
-    
     //switch (receivedFromJoystickModule){
     //case 1
       //forward full on
@@ -73,22 +71,31 @@ void loop()
       //...
     //}
 }
-
-
-
-
+// Read from the Bluetooth module and send to the Arduino Serial Monitor
+void readFromModuleAndDisplayInMonitor()
+{
+    // send data only when you receive data
+    if (BTserial.available())
+    {
+        // read the incoming byte
+        c = BTserial.read();
+        Serial.write(c); //println cannot be used, as c only contains 1 character at a time
+    }
+}
+// Get what the user wrote int the serial monitor and send it to the BLE module
+// only really used for testing and setting configurations on it
 void readFromMonitorAndSendToModule()
 {
   // Read from the Serial Monitor and send to the Bluetooth module
     if (Serial.available())
     {
+        // read the incoming byte:
         c = Serial.read();
         // do not send line end characters to the HM-10
         if (c!=10 & c!=13 ) 
         {  
              BTserial.write(c);
         }
- 
         // Echo the user input to the main window. 
         // If there is a new line print the ">" character.
         if (NL) { Serial.print("\r\n>");  NL = false; }
