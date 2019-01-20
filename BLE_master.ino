@@ -22,9 +22,12 @@ char c=' ';
 boolean NL = true;
 int state = 0; //bruges ikke længere tror jeg
 const int SW_pin = 2; // digital pin connected to switch output
+const int state_pin = 12; // digital pin connected to state output
+const int break_pin = 13; // digital pin connected to break output
 const int X_pin = 0; // analog pin connected to X output
 const int Y_pin = 1; // analog pin connected to Y output
 int carMode = 0; // each mode (number) corresponds to a certain speed and direction for the car.
+int SW_val = 1; // 0 means pressed down. 1 means not pressed down.
 
 void setup() 
 {
@@ -33,74 +36,92 @@ void setup()
     Serial.print("Sketch:   ");   Serial.println(__FILE__);
     Serial.print("Uploaded: ");   Serial.println(__DATE__);
     Serial.println(" ");
-    
     pinMode(SW_pin, INPUT);//joystick push button
+    pinMode(state_pin, INPUT);//read state pin 
+    pinMode(break_pin, OUTPUT);//break connection pin
     digitalWrite(SW_pin, HIGH); //hvorfor?
- 
+    //bluetooth initialize
     BTserial.begin(9600);  
     Serial.println("BTserial started at 9600");
-    
-    //connectToSlave();
+    Serial.println("Initializing the master...."); 
+    initializeMaster();
+    Serial.println("Done!"); 
     //Serial.println("This module is connected to its slave"); //the module will still be single letters at each iteration after this to complete the operation
 }
- 
 void loop()
 {
-    //For debugging purposes
-    readFromModuleAndDisplayInMonitor();
-    readFromMonitorAndSendToModule();
-    //get the joystick input
-    //if (connection is on (use the pin on the board) then run below code. 
-    //For now dont as it interferes with the connectToSlave() process by writing to the serial monitor
-    int x = map(analogRead(X_pin),0,1023,250,-250);
-    int y = map(analogRead(Y_pin),0,1023,250,-250);
-    //int pushButton = digitalRead(SW_pin);
-    
-    Serial.print(String(x)+"  "+String(y)+"\n");
-    BTserial.print(x); //print() converts it to binary (a byte) for us. Else use write().
-    delay(100);
-    //Serial.print(x);
-
-    //OBS.: if there are problems with connecting etc, then use the reset code for each in the sticky
-    // send joystick input to slave module
-      // no way to send two numbers (x and y) at once (but confirm with teacher) since the BLE module can only
-      // send one asci code each iteration. What you must do instead is send ONE characer/number (doesn't matter
-      // but can be represented by asci code (right, confirm understanding with teacher)) and make switch cases here.
-      // the more switch cases, the finer the steering can be. Maybe there is a way to send two at once, but forget about it for now.
-      // you could also make code for slave module that waits until it has received all the characters by just using a
-      // certain end-line character, but no need for that.
-
-      // upload this to github and name "before changing data transfer code
-      // keep x and y map() to -255,255) - you cannot go over 255 if it must be contained in 1 byte, but can
-      // -255 be contained in one byte? try the code in the firetab that shows each byte received.
-      // Send the data by using:
-      // BTserial.print(y);
-      // BTserial.print(x);
-      // BTserial.print("/n");
-      // above could also be done in one string, but does not matter.
-      // Now the slave need three iterations to receive x and y, but it doesn't matter as it will only take 
-      // ~3ms with a 9600 baud rate. Increase baud rate for faster response.
-      // slave code: see the firefox tab for receiving the data
-      // slave code: for using the data use 
-      // Analog.write(motorpin1, y-x); Analog.write(motorpin2, y+x);
-
+    // if bluetooth connection is established
+    if (digitalRead(state_pin) == HIGH)
+    {
+      // connect if the joystick is pressed down
+      SW_val = digitalRead(SW_pin);
+      if (SW_val == 0){ 
+        // break connection
+        digitalWrite(break_pin, LOW);
+      }
+      //For debugging/development purposes
+      //readFromModuleAndDisplayInMonitor();
+      //readFromMonitorAndSendToModule();
       
-   // full speed forwards
-   if ((y <= 250 && y >= 245) && (x <= 10 && x >= -10))
-   {
+      //get the joystick input
+      int x = map(analogRead(X_pin),0,1023,-250,250);
+      int y = map(analogRead(Y_pin),0,1023,-250,250);
+      //Packing the Serial message
+      //BTserial.print("*"); //A header
+      //BTserial.print("X");  //a token to indicate the message payload
+      BTserial.write(x);
+      //BTserial.println("?");  
     
-   }
-   // now the slave's version of this code needs to be combined with the motor code in "Car code" folder
-      // there should be an amount of switc cases there equal to what is present here. Already somewhat made and
-      // commented out
-   // Create code to use with the infrared remote
-   // færddigør github inkorporering
-   // læs slides igennem for krav til rapporten
-   // skim siderne i bogen
-   // lav rapporten
-   // lav billeder med fritzil
+      //BTserial.print("*"); //A header
+      //BTserial.print("Y");  //a token to indicate the message payload
+      BTserial.write(y);
+      //BTserial.print("?");  
+      //BTserial.print(x); //print() converts it to binary (a byte) for us. Else use write().
+      Serial.print(x);
+      Serial.print("  ");
+      Serial.println(y);
+    }
+    else{
+      // connect if the joystick is pressed down
+      SW_val = digitalRead(SW_pin);
+      if (SW_val == 0){ 
+        connectToSlave();
+      }
+    }
+    
+    
 }
 
+
+
+
+
+
+
+
+
+
+
+void initializeMaster()
+{
+  BTserial.print("AT+RENEW" ); //FACTORY RESET
+  delay(1000); // These are required
+  BTserial.print("AT+IMME1" ); //Make sure the module is set to manual connect
+  delay(1000); 
+  BTserial.print("AT+ROLE1" ); //Make sure it is set to master
+  delay(1000);
+  BTserial.print("AT+PIO11" ); //Do not blink. HIGH when connected, LOW when not
+  delay(1000); 
+  BTserial.print("AT+RESET" ); //Reset to apply changes
+  delay(1000); 
+  // you could leave out the AT+RESET and just move AT+ROLE1 down as AT+ROLE also restarts the module by itself
+}
+void connectToSlave()
+{
+  BTserial.print("AT+CON508CB16603EB" ); //Connect to the slave module using its address
+  Serial.println("Connection Established");
+  delay(1000);
+}
 // Read from the Bluetooth module and send to the Arduino Serial Monitor
 void readFromModuleAndDisplayInMonitor()
 {
@@ -116,9 +137,10 @@ void readFromModuleAndDisplayInMonitor()
 // only really used for testing and setting configurations on it
 void readFromMonitorAndSendToModule()
 {
-  // Read from the Serial Monitor and send to the Bluetooth module
+    // read data only when you receive data
     if (Serial.available())
     {
+        // read the incoming byte
         c = Serial.read();
         // do not send line end characters to the HM-10
         if (c!=10 & c!=13 ) 
@@ -131,14 +153,4 @@ void readFromMonitorAndSendToModule()
         Serial.write(c);
         if (c==10) { NL = true; }
     }
-}
-
-void connectToSlave()
-{
-  BTserial.print("AT+IMME1" ); //Make sure the module is set to manual connect
-  delay(1000); // These are required
-  BTserial.print("AT+ROLE1" ); //Make sure it is set to master
-  delay(1000);
-  BTserial.print("AT+CON508CB16603EB" ); //Connect to the slave module using its address
-  delay(1000);
 }
