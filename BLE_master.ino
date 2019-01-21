@@ -64,22 +64,42 @@ void loop()
       //readFromMonitorAndSendToModule();
       
       //get the joystick input
-      int x = map(analogRead(X_pin),0,1023,-250,250);
-      int y = map(analogRead(Y_pin),0,1023,-250,250);
-      //Packing the Serial message
-      //BTserial.print("*"); //A header
-      //BTserial.print("X");  //a token to indicate the message payload
-      BTserial.write(x);
-      //BTserial.println("?");  
-    
-      //BTserial.print("*"); //A header
-      //BTserial.print("Y");  //a token to indicate the message payload
-      BTserial.write(y);
-      //BTserial.print("?");  
-      //BTserial.print(x); //print() converts it to binary (a byte) for us. Else use write().
+      int x = map(analogRead(X_pin),0,1023,0,100);
+      int y = map(analogRead(Y_pin),0,1023,0,100);
       Serial.print(x);
       Serial.print("  ");
       Serial.println(y);
+      //Packing the Serial message
+      // full speed forwards
+      if ((y <= 100 && y >= 98) && (x <= 51 && x >= 49))
+      {
+        BTserial.write("a");
+      }
+      // turn right
+      else if ((y <= 55 && y >= 45) && (x <= 100 && x >= 60))
+      {
+        BTserial.write("b");
+      }
+      // turn left
+      else if ((y <= 55 && y >= 45) && (x <= 10 && x >= 0))
+      {
+        BTserial.write("c");
+      }
+      // stop
+      if ((y <= 5 && y >= 0) && (x <= 51 && x >= 49))
+      {
+        BTserial.write("d");
+      }
+      // auto forward
+      if ((y == 0 && x ==0))
+      {
+        BTserial.write("e");
+        delay(500); // just enough for you to remove your thumb again, so you don't send more than one "e"
+      }
+      //BTserial.print(x); //print() converts it to binary (a byte) for us. Else use write().
+      
+      //Serial.print("  ");
+      //Serial.println(y);
     }
     else{
       // connect if the joystick is pressed down

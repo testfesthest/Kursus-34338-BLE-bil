@@ -14,13 +14,25 @@
 //
  
 #include <AltSoftSerial.h>
+// make global instance of bluetooth serial
 AltSoftSerial BTserial; 
 // https://www.pjrc.com/teensy/td_libs_AltSoftSerial.html
 
 // Set global variables
-char c=' ';
+char c=' '; //contains data received from BLE module
 boolean NL = true;
-byte carMode = 0;
+String data; //Store each line of Serial communication
+byte autoOn = LOW;
+//motor shield
+#define enA 7
+#define in1 6
+#define in2 5
+#define in3 4
+#define in4 3
+#define enB 2
+//Photosensor
+int photocellPin = 0;     // the cell and 10K pulldown are connected to a0
+int photocellReading;     // the analog reading from the sensor divider
  
 void setup() 
 {
@@ -29,47 +41,128 @@ void setup()
     Serial.print("Sketch:   ");   Serial.println(__FILE__);
     Serial.print("Uploaded: ");   Serial.println(__DATE__);
     Serial.println(" ");
- 
+    
     BTserial.begin(9600);  
-    Serial.println("BTserial started at 9600");
-    
-    //BTserial.print("AT+IMME1" ); //Make sure the module is set to manual connect
-    //delay(1000); // These are required
-    //BTserial.print("AT+ROLE0" ); //Make sure it is set to SLAVE
-    //delay(1000);
-    //BTserial.print("AT+NAMEslaveHM" ); //Set the name (in case AT+RENEW has been called)
-    //delay(1000)
-    //BTserial.print("AT+TYPE0" ); //Make sure it doesnt require password
-    //delay(1000);
-    
+    Serial.println("BTserial started at 9600"); 
+    Serial.println("Initializing the slave...."); 
+    initializeSlave();
+    Serial.println("Done!"); 
+    //motor shield
+    pinMode(enA, OUTPUT);
+    pinMode(in1, OUTPUT);
+    pinMode(in2, OUTPUT);
+    pinMode(in3, OUTPUT);
+    pinMode(in4, OUTPUT);
+    pinMode(enB, OUTPUT);
+    //pinMode(button, INPUT);
+    // Set initial rotation direction
+    // Set Motor A backward
+    digitalWrite(in1, HIGH);
+    digitalWrite(in2, LOW);
+    // Set Motor B backward
+    digitalWrite(in3, HIGH);
+    digitalWrite(in4, LOW);
+
+    //analogWrite(enA, 200); // Send PWM signal to L298N Enable pin
+    //analogWrite(enB, 200); // Send PWM signal to L298N Enable pin
 }
- 
 void loop()
 {
+    //For debugging/development purposes
     //readFromModuleAndDisplayInMonitor();
-    readFromMonitorAndSendToModule();
-     // read data only when you receive data
+    //readFromMonitorAndSendToModule();
+    
+    // read data only when you receive data
     if (BTserial.available())
     {
-        // read the incoming byte
-        if (BTserial.read() == integer){
-          if (BTserial.read()
-          carMode = BTserial.read();
+        // read the incoming bytes (byte if you used .read())
+        //char y = BTserial.read();
+        char x = BTserial.read();
+        // full speed forwards
+        if (x == 97) //decimal code for "a"
+        {
+          Serial.write("a");
+          analogWrite(enA, 255); // Send PWM signal to L298N Enable pin
+          analogWrite(enB, 255); // Send PWM signal to L298N Enable pin
+          autoOn = LOW;
+        }
+        // turn right
+        else if (x == 98) //decimal code for "b"
+        {
+          Serial.write("b");
+          analogWrite(enA, 255); // Send PWM signal to L298N Enable pin
+          analogWrite(enB, 0); // Send PWM signal to L298N Enable pin
+          autoOn = LOW;
+        }
+        // turn left
+        else if (x == 99) //decimal code for "c"
+        {
+          Serial.write("c");
+          analogWrite(enA, 0); // Send PWM signal to L298N Enable pin
+          analogWrite(enB, 255); // Send PWM signal to L298N Enable pin
+          autoOn = LOW;
+        }
+        // break
+        else if (x == 100)
+        {
+          Serial.write("d");
+          analogWrite(enA, 0); // Send PWM signal to L298N Enable pin
+          analogWrite(enB, 0); // Send PWM signal to L298N Enable pin
+          autoOn = LOW;
+        }
+        // drive forward until ...
+        else if (x == 101)
+        {
+          Serial.write("e");
+          analogWrite(enA, 255); // Send PWM signal to L298N Enable pin
+          analogWrite(enB, 255); // Send PWM signal to L298N Enable pin
+          autoOn = HIGH;
+          Serial.println("Automatic mode engaged");
+          Serial.println("");
         }
     }
-    //switch (receivedFromJoystickModule){
-    //case 1
-      //forward full on
-      //analogWrite(enA, 250); // Send PWM signal to L298N Enable pin
-      //analogWrite(enB, 250); // Send PWM signal to L298N Enable pin
-      //break;
-    //case 2
-      // forward slowly
-      //analogWrite(enA, 150); // Send PWM signal to L298N Enable pin
-      //analogWrite(enB, 150); // Send PWM signal to L298N Enable pin
-      //break;
-      //...
-    //}
+    else
+    {
+      //analogWrite(enA, 0); // Send PWM signal to L298N Enable pin
+      //analogWrite(enB, 0); // Send PWM signal to L298N Enable pin
+    }
+    if (autoOn == HIGH)
+    {
+      photocellReading = analogRead(photocellPin);
+      Serial.print("Analog reading = ");
+      Serial.println(photocellReading);// the raw analog reading
+      if (photocellReading > 800)
+      {
+        analogWrite(enA, 0); // Send PWM signal to L298N Enable pin
+        analogWrite(enB, 0); // Send PWM signal to L298N Enable pin
+        autoOn = LOW;
+        Serial.println("Automatic mode stopped. Sufficient solar power detected.");
+        Serial.println("");
+      }
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+void initializeSlave()
+{
+  BTserial.print("AT+RENEW" ); //FACTORY RESET
+  delay(1000); // These are required
+  BTserial.print("AT+PIO11" ); //Do not blink. HIGH when connected, LOW when not
+  delay(1000);
+  BTserial.print("AT+RESET" ); //Reset to apply change
+  delay(1000); 
 }
 // Read from the Bluetooth module and send to the Arduino Serial Monitor
 void readFromModuleAndDisplayInMonitor()
