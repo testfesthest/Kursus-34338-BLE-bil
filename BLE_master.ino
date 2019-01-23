@@ -39,11 +39,10 @@ void setup()
     pinMode(SW_pin, INPUT);//joystick push button
     pinMode(state_pin, INPUT);//read state pin 
     pinMode(break_pin, OUTPUT);//break connection pin
-    digitalWrite(SW_pin, HIGH); //hvorfor?
+    //digitalWrite(SW_pin, HIGH); //hvorfor?
     //bluetooth initialize
     BTserial.begin(9600);  
     Serial.println("BTserial started at 9600");
-    Serial.println("Initializing the master...."); 
     initializeMaster();
     Serial.println("Done!"); 
     //Serial.println("This module is connected to its slave"); //the module will still be single letters at each iteration after this to complete the operation
@@ -53,11 +52,11 @@ void loop()
     // if bluetooth connection is established
     if (digitalRead(state_pin) == HIGH)
     {
-      // connect if the joystick is pressed down
+      // auto-forward ON/OFF if the joystick is pressed down
       SW_val = digitalRead(SW_pin);
       if (SW_val == 0){ 
-        // break connection
-        digitalWrite(break_pin, LOW);
+         BTserial.write("f");
+         delay(500);
       }
       //For debugging/development purposes
       //readFromModuleAndDisplayInMonitor();
@@ -66,9 +65,9 @@ void loop()
       //get the joystick input
       int x = map(analogRead(X_pin),0,1023,0,100);
       int y = map(analogRead(Y_pin),0,1023,0,100);
-      Serial.print(x);
-      Serial.print("  ");
-      Serial.println(y);
+      //Serial.print(x);
+      //Serial.print("  ");
+      //Serial.println(y);
       //Packing the Serial message
       // full speed forwards
       if ((y <= 100 && y >= 98) && (x <= 51 && x >= 49))
@@ -85,31 +84,36 @@ void loop()
       {
         BTserial.write("c");
       }
-      // stop
+      // reverse
       if ((y <= 5 && y >= 0) && (x <= 51 && x >= 49))
       {
         BTserial.write("d");
       }
-      // auto forward
-      if ((y == 0 && x ==0))
+      // break
+      if ((y <= 52 && y >= 48) && (x <= 52 && x >= 48))
       {
         BTserial.write("e");
-        delay(500); // just enough for you to remove your thumb again, so you don't send more than one "e"
       }
+      //// auto forward
+      //if ((y == 0 && x ==0))
+      //{
+      //  BTserial.write("f");
+      //  delay(500); // just enough for you to remove your thumb again, so you don't send more than one "e"
+      //}
       //BTserial.print(x); //print() converts it to binary (a byte) for us. Else use write().
       
       //Serial.print("  ");
       //Serial.println(y);
     }
     else{
-      // connect if the joystick is pressed down
+      // if the joystick is pressed down
       SW_val = digitalRead(SW_pin);
-      if (SW_val == 0){ 
-        connectToSlave();
+      if (SW_val == 0)
+      {
+          connectToSlave();
       }
     }
-    
-    
+    delay(100); //ellers bliver kommer der en traffic jam i serial buffer på den anden side
 }
 
 
@@ -124,6 +128,7 @@ void loop()
 
 void initializeMaster()
 {
+  Serial.println("Initializing the master...."); 
   BTserial.print("AT+RENEW" ); //FACTORY RESET
   delay(1000); // These are required
   BTserial.print("AT+IMME1" ); //Make sure the module is set to manual connect
