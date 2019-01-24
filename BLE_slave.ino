@@ -30,6 +30,7 @@ byte autoOn = LOW;
 #define in3 4
 #define in4 3
 #define enB 2
+int motorSpeed = 200;
 //Photosensor
 int photocellPin = A5;     // the cell and 10K pulldown are connected to a0
 int photocellReading;     // the analog reading from the sensor divider
@@ -41,6 +42,7 @@ int photocellReading;     // the analog reading from the sensor divider
 NewPing sonar(TRIGGER_PIN, ECHO_PIN, MAX_DISTANCE); // NewPing setup of pins and maximum distance
 //hm10 connection state pin
 int state_pin = 13;
+
 void setup() 
 {   
     Serial.begin(9600);// opens serial port, sets data rate to 9600 bps
@@ -68,8 +70,11 @@ void setup()
     // Set Motor B backward
     digitalWrite(in3, HIGH);
     digitalWrite(in4, LOW);
-
-    pinMode(state_pin, INPUT);//read state pin 
+    // sometimes one set of wheel spin on startup...
+    //analogWrite(enA, 0); // Send PWM signal to L298N Enable pin
+    //analogWrite(enB, 0); // Send PWM signal to L298N Enable pin
+    //read-state pin 
+    pinMode(state_pin, INPUT);
 }
 void loop()
 {
@@ -86,7 +91,14 @@ void loop()
           // read the incoming bytes (byte if you used .read())
           //char y = BTserial.read();
           char x = BTserial.read();
-          
+          Serial.println(x);
+          //used in order to flush the serial data containing the "www.jnhuamao.cn" text sent by the master due to restart
+          if(x == 119) //decimal code for "w"
+          {
+            unsigned long now = millis ();
+            while (millis () - now < 1000)
+            Serial.read ();  // read and discard any input
+          }
           // Forwards
           if (x == 97) //decimal code for "a"
           {
@@ -98,8 +110,8 @@ void loop()
             digitalWrite(in3, HIGH);
             digitalWrite(in4, LOW);
             //spin the motors
-            analogWrite(enA, 255); // Send PWM signal to L298N Enable pin
-            analogWrite(enB, 255); // Send PWM signal to L298N Enable pin
+            analogWrite(enA, motorSpeed); // Send PWM signal to L298N Enable pin
+            analogWrite(enB, motorSpeed); // Send PWM signal to L298N Enable pin
             autoOn = LOW;
           }
           // turn right
@@ -113,7 +125,7 @@ void loop()
             digitalWrite(in3, HIGH);
             digitalWrite(in4, LOW);
             //spin the motors
-            analogWrite(enA, 255); // Send PWM signal to L298N Enable pin
+            analogWrite(enA, motorSpeed); // Send PWM signal to L298N Enable pin
             analogWrite(enB, 0); // Send PWM signal to L298N Enable pin
             autoOn = LOW;
           }
@@ -129,7 +141,7 @@ void loop()
             digitalWrite(in4, LOW);
             //spin the motors
             analogWrite(enA, 0); // Send PWM signal to L298N Enable pin
-            analogWrite(enB, 255); // Send PWM signal to L298N Enable pin
+            analogWrite(enB, motorSpeed); // Send PWM signal to L298N Enable pin
             autoOn = LOW;
           }
           // Reverse
@@ -158,13 +170,13 @@ void loop()
           {
             if (autoOn == LOW){
               // Set motors A direction
-              digitalWrite(in1, HIGH);
-              digitalWrite(in2, LOW);
+              digitalWrite(in1, LOW);
+              digitalWrite(in2, HIGH);
               // Set motors B direction
-              digitalWrite(in3, HIGH);
-              digitalWrite(in4, LOW);
-              analogWrite(enA, 255); // Send PWM signal to L298N Enable pin
-              analogWrite(enB, 255); // Send PWM signal to L298N Enable pin
+              digitalWrite(in3, LOW);
+              digitalWrite(in4, HIGH);
+              analogWrite(enA, motorSpeed); // Send PWM signal to L298N Enable pin
+              analogWrite(enB, motorSpeed); // Send PWM signal to L298N Enable pin
               Serial.println("Automatic mode engaged");
               Serial.println("");
               autoOn = HIGH;
@@ -188,7 +200,7 @@ void loop()
         // get sonar reading
         delay(50);
         unsigned int distance = sonar.ping_cm();
-        if (distance < 4 && distance > 0)
+        if (distance < 15 && distance > 0)
         {
           analogWrite(enA, 0); // Send PWM signal to L298N Enable pin
           analogWrite(enB, 0); // Send PWM signal to L298N Enable pin

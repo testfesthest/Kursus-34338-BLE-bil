@@ -70,7 +70,7 @@ void loop()
       //Serial.println(y);
       //Packing the Serial message
       // full speed forwards
-      if ((y <= 100 && y >= 98) && (x <= 51 && x >= 49))
+      if ((y <= 100 && y >= 98) && (x <= 60 && x >= 40))
       {
         BTserial.write("a");
       }
@@ -85,7 +85,7 @@ void loop()
         BTserial.write("c");
       }
       // reverse
-      if ((y <= 5 && y >= 0) && (x <= 51 && x >= 49))
+      if ((y <= 5 && y >= 0) && (x <= 60 && x >= 40))
       {
         BTserial.write("d");
       }
@@ -111,6 +111,7 @@ void loop()
       if (SW_val == 0)
       {
           connectToSlave();
+          delay(500); //to prevent is from spinning
       }
     }
     delay(100); //ellers bliver kommer der en traffic jam i serial buffer på den anden side
