@@ -91,7 +91,7 @@ void loop()
           // read the incoming bytes (byte if you used .read())
           //char y = BTserial.read();
           char x = BTserial.read();
-          Serial.println(x);
+          //Serial.println(x);
           //used in order to flush the serial data containing the "www.jnhuamao.cn" text sent by the master due to restart
           if(x == 119) //decimal code for "w"
           {
@@ -122,11 +122,11 @@ void loop()
             digitalWrite(in1, HIGH);
             digitalWrite(in2, LOW);
             // Set motors B direction
-            digitalWrite(in3, HIGH);
-            digitalWrite(in4, LOW);
+            digitalWrite(in3, LOW);
+            digitalWrite(in4, HIGH);
             //spin the motors
             analogWrite(enA, motorSpeed); // Send PWM signal to L298N Enable pin
-            analogWrite(enB, 0); // Send PWM signal to L298N Enable pin
+            analogWrite(enB, motorSpeed); // Send PWM signal to L298N Enable pin
             autoOn = LOW;
           }
           // turn left
@@ -134,13 +134,13 @@ void loop()
           {
             //Serial.println("Left");
             // Set motors A direction
-            digitalWrite(in1, HIGH);
-            digitalWrite(in2, LOW);
+            digitalWrite(in1, LOW);
+            digitalWrite(in2, HIGH);
             // Set motors B direction
             digitalWrite(in3, HIGH);
             digitalWrite(in4, LOW);
             //spin the motors
-            analogWrite(enA, 0); // Send PWM signal to L298N Enable pin
+            analogWrite(enA, motorSpeed); // Send PWM signal to L298N Enable pin
             analogWrite(enB, motorSpeed); // Send PWM signal to L298N Enable pin
             autoOn = LOW;
           }
@@ -180,6 +180,11 @@ void loop()
               Serial.println("Automatic mode engaged");
               Serial.println("");
               autoOn = HIGH;
+              //square routine
+              //  for (int i=0; i <= 10; i++){
+              //    //drive 30cm forward
+              //    //turn 160* (if it turns on a dime, then go a but right and then down)
+              //  }
             }
             else if (autoOn == HIGH){
               analogWrite(enA, 0); // Send PWM signal to L298N Enable pin
@@ -200,6 +205,7 @@ void loop()
         // get sonar reading
         delay(50);
         unsigned int distance = sonar.ping_cm();
+        //Serial.println(distance);
         if (distance < 15 && distance > 0)
         {
           analogWrite(enA, 0); // Send PWM signal to L298N Enable pin
@@ -212,8 +218,8 @@ void loop()
         {
           // get solar cell reading
           photocellReading = analogRead(photocellPin);
-          Serial.print("Analog reading = ");
-          Serial.println(photocellReading);// the raw analog reading
+          //Serial.print("Analog reading = ");
+          //Serial.println(photocellReading);// the raw analog reading
           if (photocellReading > 800)
           {
             analogWrite(enA, 0); // Send PWM signal to L298N Enable pin

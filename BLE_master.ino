@@ -139,7 +139,8 @@ void initializeMaster()
   BTserial.print("AT+PIO11" ); //Do not blink. HIGH when connected, LOW when not
   delay(1000); 
   BTserial.print("AT+RESET" ); //Reset to apply changes
-  delay(1000); 
+  delay(1000);
+  
   // you could leave out the AT+RESET and just move AT+ROLE1 down as AT+ROLE also restarts the module by itself
 }
 void connectToSlave()
