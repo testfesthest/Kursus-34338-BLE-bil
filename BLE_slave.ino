@@ -1,28 +1,13 @@
-//  SerialIn_SerialOut_HM-10_01
-//
-//  Uses hardware serial to talk to the host computer and AltSoftSerial for communication with the bluetooth module
-//
-//  What ever is entered in the serial monitor is sent to the connected device
-//  Anything received from the connected device is copied to the serial monitor
-//  Does not send line endings to the HM-10
-//
-//  Pins
-//  BT VCC to Arduino 5V out. 
-//  BT GND to GND
-//  Arduino D8 (SS RX) - BT TX no need voltage divider 
-//  Arduino D9 (SS TX) - BT RX through a voltage divider (5v to 3.3v)
-//
+//----------------------------------------//
+//---------------- Car -------------------//
+//----------------------------------------//
  
-#include <AltSoftSerial.h>
-// make global instance of bluetooth serial
-AltSoftSerial BTserial; 
-// https://www.pjrc.com/teensy/td_libs_AltSoftSerial.html
+#include <AltSoftSerial.h> // https://www.pjrc.com/teensy/td_libs_AltSoftSerial.html
+AltSoftSerial BTserial; // make global instance
 
 // Set global variables
-char c=' '; //contains data received from BLE module
-boolean NL = true;
-String data; //Store each line of Serial communication
-byte autoOn = LOW;
+char c=' '; //contains the byte received from BLE module
+bool autoOn = false;
 //motor shield
 #define enA 7
 #define in1 6
@@ -32,29 +17,24 @@ byte autoOn = LOW;
 #define enB 2
 int motorSpeed = 200;
 //Photosensor
-int photocellPin = A5;     // the cell and 10K pulldown are connected to a0
-int photocellReading;     // the analog reading from the sensor divider
+#define SOLAR_PIN = A5;
+int solarCellReading;
 // Ultrasonic sensor
 #include <NewPing.h>
 #define TRIGGER_PIN 11
 #define ECHO_PIN 10
 #define MAX_DISTANCE 200
-NewPing sonar(TRIGGER_PIN, ECHO_PIN, MAX_DISTANCE); // NewPing setup of pins and maximum distance
+NewPing sonar(TRIGGER_PIN, ECHO_PIN, MAX_DISTANCE);
 //hm10 connection state pin
-int state_pin = 13;
+#define STATE_PIN = 13;
 
 void setup() 
 {   
-    Serial.begin(9600);// opens serial port, sets data rate to 9600 bps
-    Serial.print("Sketch:   ");   Serial.println(__FILE__);
-    Serial.print("Uploaded: ");   Serial.println(__DATE__);
-    Serial.println(" ");
-    
+    // opens serial ports and sets data rate to 9600 bps
+    Serial.begin(9600);
     BTserial.begin(9600);  
     Serial.println("BTserial started at 9600"); 
-    Serial.println("Initializing the slave...."); 
     initializeSlave();
-    Serial.println("Done!"); 
     //motor shield
     pinMode(enA, OUTPUT);
     pinMode(in1, OUTPUT);
@@ -62,43 +42,29 @@ void setup()
     pinMode(in3, OUTPUT);
     pinMode(in4, OUTPUT);
     pinMode(enB, OUTPUT);
-    //pinMode(button, INPUT);
     // Set initial rotation direction
-    // Set Motor A backward
+      // Set Motors A
     digitalWrite(in1, HIGH);
     digitalWrite(in2, LOW);
-    // Set Motor B backward
+      // Set Motors B
     digitalWrite(in3, HIGH);
     digitalWrite(in4, LOW);
-    // sometimes one set of wheel spin on startup...
-    //analogWrite(enA, 0); // Send PWM signal to L298N Enable pin
-    //analogWrite(enB, 0); // Send PWM signal to L298N Enable pin
-    //read-state pin 
-    pinMode(state_pin, INPUT);
+    pinMode(STATE_PIN, INPUT);
 }
 void loop()
 {
-    // don't do anything unless the connection is on
-    if (digitalRead(state_pin) == HIGH)
+    // if bluetooth connection is established
+    if (digitalRead(STATE_PIN) == HIGH)
     {
-      //For debugging/development purposes
+      //For development purposes
       //readFromModuleAndDisplayInMonitor();
       //readFromMonitorAndSendToModule();
       
       // read data only when you receive data
       if (BTserial.available())
       {
-          // read the incoming bytes (byte if you used .read())
-          //char y = BTserial.read();
+          // read the incoming byte
           char x = BTserial.read();
-          //Serial.println(x);
-          //used in order to flush the serial data containing the "www.jnhuamao.cn" text sent by the master due to restart
-          if(x == 119) //decimal code for "w"
-          {
-            unsigned long now = millis ();
-            while (millis () - now < 1000)
-            Serial.read ();  // read and discard any input
-          }
           // Forwards
           if (x == 97) //decimal code for "a"
           {
@@ -110,97 +76,88 @@ void loop()
             digitalWrite(in3, HIGH);
             digitalWrite(in4, LOW);
             //spin the motors
-            analogWrite(enA, motorSpeed); // Send PWM signal to L298N Enable pin
-            analogWrite(enB, motorSpeed); // Send PWM signal to L298N Enable pin
-            autoOn = LOW;
+            analogWrite(enA, motorSpeed);
+            analogWrite(enB, motorSpeed);
+            autoOn = false;
           }
           // turn right
           else if (x == 98) //decimal code for "b"
           {
-            //Serial.println("Right");
             // Set motors A direction
             digitalWrite(in1, HIGH);
             digitalWrite(in2, LOW);
             // Set motors B direction
             digitalWrite(in3, LOW);
             digitalWrite(in4, HIGH);
-            //spin the motors
-            analogWrite(enA, motorSpeed); // Send PWM signal to L298N Enable pin
-            analogWrite(enB, motorSpeed); // Send PWM signal to L298N Enable pin
-            autoOn = LOW;
+            // Spin the motors
+            analogWrite(enA, motorSpeed);
+            analogWrite(enB, motorSpeed);
+            autoOn = false;
           }
           // turn left
           else if (x == 99) //decimal code for "c"
           {
-            //Serial.println("Left");
             // Set motors A direction
             digitalWrite(in1, LOW);
             digitalWrite(in2, HIGH);
             // Set motors B direction
             digitalWrite(in3, HIGH);
             digitalWrite(in4, LOW);
-            //spin the motors
-            analogWrite(enA, motorSpeed); // Send PWM signal to L298N Enable pin
-            analogWrite(enB, motorSpeed); // Send PWM signal to L298N Enable pin
-            autoOn = LOW;
+            // Spin the motors
+            analogWrite(enA, motorSpeed);
+            analogWrite(enB, motorSpeed);
+            autoOn = false;
           }
           // Reverse
-          else if (x == 100) //decimal code for "c"
+          else if (x == 100) //decimal code for "d"
           {
-            //Serial.println("Reversing");
             // Set motors A direction
             digitalWrite(in1, LOW);
             digitalWrite(in2, HIGH);
             // Set motors B direction
             digitalWrite(in3, LOW);
             digitalWrite(in4, HIGH);
-            analogWrite(enA, 255); // Send PWM signal to L298N Enable pin
-            analogWrite(enB, 255); // Send PWM signal to L298N Enable pin
-            autoOn = LOW;
+            // Spin the motors
+            analogWrite(enA, motorSpeed);
+            analogWrite(enB, motorSpeed);
+            autoOn = false;
           }
           // break
-          else if (x == 101 && autoOn == LOW)
+          else if (x == 101 && autoOn == false)
           {
-            //Serial.println("breaking");
-            analogWrite(enA, 0); // Send PWM signal to L298N Enable pin
-            analogWrite(enB, 0); // Send PWM signal to L298N Enable pin
+            analogWrite(enA, 0);
+            analogWrite(enB, 0);
           }
           // auto-mode
           else if (x == 102)
           {
-            if (autoOn == LOW){
+            if (autoOn == false){
               // Set motors A direction
               digitalWrite(in1, LOW);
               digitalWrite(in2, HIGH);
               // Set motors B direction
               digitalWrite(in3, LOW);
               digitalWrite(in4, HIGH);
-              analogWrite(enA, motorSpeed); // Send PWM signal to L298N Enable pin
-              analogWrite(enB, motorSpeed); // Send PWM signal to L298N Enable pin
+              // Spin the motors
+              analogWrite(enA, motorSpeed);
+              analogWrite(enB, motorSpeed);
               Serial.println("Automatic mode engaged");
               Serial.println("");
-              autoOn = HIGH;
-              //square routine
-              //  for (int i=0; i <= 10; i++){
-              //    //drive 30cm forward
-              //    //turn 160* (if it turns on a dime, then go a but right and then down)
-              //  }
+              autoOn = true;
+              // Disconnect to save power
+              
             }
-            else if (autoOn == HIGH){
-              analogWrite(enA, 0); // Send PWM signal to L298N Enable pin
-              analogWrite(enB, 0); // Send PWM signal to L298N Enable pin
+            //stop auto mode if button is pressed again
+            else if (autoOn == true){
+              analogWrite(enA, 0);
+              analogWrite(enB, 0); 
               Serial.println("Automatic mode ended");
               Serial.println("");
-              autoOn = LOW;
+              autoOn = false;
             }
           }
       }
-      else
-      {
-        //analogWrite(enA, 0); // Send PWM signal to L298N Enable pin
-        //analogWrite(enB, 0); // Send PWM signal to L298N Enable pin
-      }
-      if (autoOn == HIGH)
+      if (autoOn == true)
       {
         // get sonar reading
         delay(50);
@@ -208,57 +165,47 @@ void loop()
         //Serial.println(distance);
         if (distance < 15 && distance > 0)
         {
-          analogWrite(enA, 0); // Send PWM signal to L298N Enable pin
-          analogWrite(enB, 0); // Send PWM signal to L298N Enable pin
-          autoOn = LOW;
+          analogWrite(enA, 0);
+          analogWrite(enB, 0);
+          autoOn = false;
           Serial.println("Automatic mode stopped. Obstacle detected.");
           Serial.println("");
         }
         else
         {
-          // get solar cell reading
-          photocellReading = analogRead(photocellPin);
-          //Serial.print("Analog reading = ");
-          //Serial.println(photocellReading);// the raw analog reading
-          if (photocellReading > 800)
+          // get solar cell analog reading
+          solarCellReading = analogRead(SOLAR_PIN);
+          if (solarCellReading > 800)
           {
-            analogWrite(enA, 0); // Send PWM signal to L298N Enable pin
-            analogWrite(enB, 0); // Send PWM signal to L298N Enable pin
-            autoOn = LOW;
+            analogWrite(enA, 0);
+            analogWrite(enB, 0);
+            autoOn = false;
             Serial.println("Automatic mode stopped. Sufficient solar power detected.");
             Serial.println("");
           }
         }
       } 
-    }else{
+    }
+    else
+    {
       analogWrite(enA, 0);
       analogWrite(enB, 0);
     }
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
+// initializes the connected hm10 module
 void initializeSlave()
 {
+  Serial.println("Initializing the slave....");
   BTserial.print("AT+RENEW" ); //FACTORY RESET
   delay(1000); // These are required
-  BTserial.print("AT+PIO11" ); //Do not blink. HIGH when connected, LOW when not
+  BTserial.print("AT+PIO11" ); //Do not blink. HIGH when connected, LOW when not.
   delay(1000);
   BTserial.print("AT+RESET" ); //Reset to apply change
   delay(1000); 
+  Serial.println("Done!");
 }
-// Read from the Bluetooth module and send to the Arduino Serial Monitor
+// Read from the hm10 and send to the Serial Monitor (used for testing & configuration)
 void readFromModuleAndDisplayInMonitor()
 {
     // send data only when you receive data
@@ -266,27 +213,16 @@ void readFromModuleAndDisplayInMonitor()
     {
         // read the incoming byte
         c = BTserial.read();
-        Serial.write(c); //println cannot be used, as c only contains 1 character at a time
+        Serial.write(c);
     }
 }
-// Get what the user wrote int the serial monitor and send it to the BLE module
-// only really used for testing and setting configurations on it
+// Sends user's serial monitor input to the hm10 (used for testing & configuration)
 void readFromMonitorAndSendToModule()
 {
-  // Read from the Serial Monitor and send to the Bluetooth module
+    // read data only when you receive data
     if (Serial.available())
     {
-        // read the incoming byte:
         c = Serial.read();
-        // do not send line end characters to the HM-10
-        if (c!=10 & c!=13 ) 
-        {
-             BTserial.write(c);
-        }
-        // Echo the user input to the main window. 
-        // If there is a new line print the ">" character.
-        if (NL) { Serial.print("\r\n>");  NL = false; }
-        Serial.write(c);
-        if (c==10) { NL = true; }
+        BTserial.write(c); // do not send line end characters to the HM-10 (c=10 or c=13)
     }
 }
